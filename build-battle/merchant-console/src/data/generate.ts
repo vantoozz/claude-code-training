@@ -1,5 +1,8 @@
+import { generateCardNumber, last4Of } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
+  Card,
+  CardStatus,
   Currency,
   Dispute,
   Payment,
@@ -52,7 +55,7 @@ const REASON_CODES = [
   "13.7 Cancelled Merchandise",
 ]
 
-const pad = (n: number, width = 6) => String(n).padStart(width, "0")
+export const pad = (n: number, width = 6) => String(n).padStart(width, "0")
 
 /** The anchor date. Fixed, so "the last 30 days" is stable across runs. */
 export const GENERATED_AT = new Date("2026-08-13T00:00:00.000Z")
@@ -148,7 +151,98 @@ export function generate() {
   }
 
   const payouts = generatePayouts(payments)
-  return { payments, refunds, disputes, payouts }
+  const cards = generateCards()
+  return { payments, refunds, disputes, payouts, cards }
+}
+
+/**
+ * Five cards, so every path through the UI has a record that reaches it:
+ * all three currencies, all three statuses, and spend on both sides of 80%.
+ */
+function generateCards(): Card[] {
+  const specs: {
+    merchantId: string
+    nickname: string
+    limit: number
+    spend: number
+    currency: Currency
+    status: CardStatus
+    /** Days before GENERATED_AT that the card was issued. */
+    ageDays: number
+  }[] = [
+    {
+      merchantId: "mch_01",
+      nickname: "Ad spend — Meta",
+      limit: 250_000,
+      spend: 232_500,
+      currency: "USD",
+      status: "active",
+      ageDays: 96,
+    },
+    {
+      merchantId: "mch_04",
+      nickname: "Contractor tools",
+      limit: 120_000,
+      spend: 71_400,
+      currency: "GBP",
+      status: "active",
+      ageDays: 61,
+    },
+    {
+      merchantId: "mch_05",
+      nickname: "Vendor subscriptions",
+      limit: 80_000,
+      spend: 79_950,
+      currency: "EUR",
+      status: "frozen",
+      ageDays: 44,
+    },
+    {
+      merchantId: "mch_07",
+      nickname: "Studio equipment",
+      limit: 500_000,
+      spend: 0,
+      currency: "USD",
+      status: "active",
+      ageDays: 12,
+    },
+    {
+      merchantId: "mch_09",
+      nickname: "Trade show travel",
+      limit: 300_000,
+      spend: 145_000,
+      currency: "GBP",
+      status: "cancelled",
+      ageDays: 78,
+    },
+  ]
+
+  return specs.map((spec, index) => {
+    const createdAt = new Date(GENERATED_AT)
+    createdAt.setUTCDate(createdAt.getUTCDate() - spec.ageDays)
+    createdAt.setUTCHours(between(8, 18), between(0, 59), 0, 0)
+
+    /** A card starts active, so a later status is a second event. */
+    const events = [{ status: "active" as CardStatus, at: createdAt.toISOString() }]
+    if (spec.status !== "active") {
+      const changedAt = new Date(createdAt)
+      changedAt.setUTCDate(changedAt.getUTCDate() + between(3, 20))
+      events.push({ status: spec.status, at: changedAt.toISOString() })
+    }
+
+    return {
+      id: `card_${pad(index + 1)}`,
+      merchantId: spec.merchantId,
+      nickname: spec.nickname,
+      limit: spec.limit,
+      spend: spec.spend,
+      currency: spec.currency,
+      status: spec.status,
+      last4: last4Of(generateCardNumber(rand)),
+      createdAt: createdAt.toISOString(),
+      events,
+    }
+  })
 }
 
 function generatePayouts(payments: Payment[]): Payout[] {
