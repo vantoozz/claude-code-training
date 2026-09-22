@@ -15,6 +15,7 @@ import { maskCard } from "@/lib/cards"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
 import { CardsFilterBar } from "./filter-bar"
+import { CardStatusActions } from "./card-status-actions"
 import { IssueCardDrawer } from "./issue-card-drawer"
 
 /** Reads the store directly, as payments/page.tsx does. */
@@ -50,12 +51,15 @@ export default async function CardsPage({
               <TableHeaderCell>Created</TableHeaderCell>
               <TableHeaderCell className="text-right">Spend limit</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
+              <TableHeaderCell>
+                <span className="sr-only">Actions</span>
+              </TableHeaderCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {cards.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-16 text-center">
+                <TableCell colSpan={7} className="py-16 text-center">
                   <p className="font-medium text-gray-900 dark:text-gray-50">
                     No {filter === "all" ? "" : filter} cards yet
                   </p>
@@ -89,6 +93,13 @@ export default async function CardsPage({
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={card.status} />
+                  </TableCell>
+                  <TableCell>
+                    <CardStatusActions
+                      cardId={card.id}
+                      status={card.status}
+                      nickname={card.nickname}
+                    />
                   </TableCell>
                 </TableRow>
               )
