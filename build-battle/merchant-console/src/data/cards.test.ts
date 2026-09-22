@@ -135,10 +135,10 @@ describe("parseCardInput — acceptance", () => {
     }
   })
 
-  it("accepts each allowed currency", () => {
-    for (const currency of ["USD", "EUR", "GBP"]) {
-      expect(parseCardInput({ ...valid, currency }).ok).toBe(true)
-    }
+  it("still rejects a currency outside the allowlist before checking the merchant", () => {
+    const result = parseCardInput({ ...valid, currency: "XYZ" })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error.message).toContain("USD, EUR, or GBP")
   })
 
   it("accepts the boundary limits, 1 and the cap", () => {
@@ -146,10 +146,26 @@ describe("parseCardInput — acceptance", () => {
     expect(parseCardInput({ ...valid, limit: MAX_CARD_LIMIT }).ok).toBe(true)
   })
 
-  it("accepts a currency that differs from the merchant's own", () => {
-    // Decision 1 in the spec: the server checks the allowlist only, so a
-    // valid cross-currency post cannot fail.
-    expect(parseCardInput({ ...valid, currency: "GBP" }).ok).toBe(true)
+  it("rejects a currency the merchant does not settle in", () => {
+    // mch_01 settles in USD, so a GBP card against it is a balance nobody
+    // can reconcile. The server verifies this whatever the form sent.
+    const result = parseCardInput({ ...valid, currency: "GBP" })
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error.field).toBe("currency")
+      expect(result.error.message).toContain("USD")
+    }
+  })
+
+  it("accepts the currency each merchant actually settles in", () => {
+    const pairs = [
+      { merchantId: "mch_01", currency: "USD" },
+      { merchantId: "mch_04", currency: "GBP" },
+      { merchantId: "mch_05", currency: "EUR" },
+    ]
+    for (const pair of pairs) {
+      expect(parseCardInput({ ...valid, ...pair }).ok).toBe(true)
+    }
   })
 })
 

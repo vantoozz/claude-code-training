@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/Select"
-import { CURRENCIES, formatMoney, parseAmountToMinorUnits } from "@/lib/money"
+import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
 import { Currency } from "@/data/types"
 import { useRouter } from "next/navigation"
 import * as React from "react"
@@ -97,7 +97,7 @@ function IssueForm({
   const [merchantId, setMerchantId] = React.useState("")
   const [nickname, setNickname] = React.useState("")
   const [amount, setAmount] = React.useState("")
-  const [currency, setCurrency] = React.useState<Currency>("USD")
+  const [currency, setCurrency] = React.useState<Currency | null>(null)
   const [error, setError] = React.useState<{
     message: string
     field: string
@@ -110,6 +110,11 @@ function IssueForm({
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     if (sending) return
+
+    if (!currency) {
+      setError({ message: "Pick a merchant first.", field: "merchantId" })
+      return
+    }
 
     if (limit === null) {
       setError({
@@ -271,21 +276,24 @@ function IssueForm({
             >
               Currency
             </label>
-            <Select
-              value={currency}
-              onValueChange={(next) => setCurrency(next as Currency)}
-            >
-              <SelectTrigger id="card-currency" className="mt-2">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CURRENCIES.map((code) => (
-                  <SelectItem key={code} value={code}>
-                    {code}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/*
+              Derived from the merchant, not chosen. A card settles against its
+              merchant, so offering a currency the server will reject is a form
+              that lies. The server verifies the match regardless.
+            */}
+            <Input
+              id="card-currency"
+              name="currency"
+              value={currency ?? ""}
+              readOnly
+              aria-readonly="true"
+              placeholder="—"
+              className="mt-2 tabular-nums"
+              aria-describedby="card-currency-hint"
+            />
+            <p id="card-currency-hint" className="mt-1 text-xs text-gray-500">
+              Set by the merchant
+            </p>
           </div>
         </div>
 

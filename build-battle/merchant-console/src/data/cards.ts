@@ -57,7 +57,8 @@ export function parseCardInput(body: unknown): ParsedCardInput {
   const merchantId =
     typeof input.merchantId === "string" ? input.merchantId.trim() : ""
   if (!merchantId) return invalid("Pick a merchant.", "merchantId")
-  if (!merchantById(merchantId)) {
+  const merchant = merchantById(merchantId)
+  if (!merchant) {
     return invalid("That merchant does not exist.", "merchantId")
   }
 
@@ -88,6 +89,18 @@ export function parseCardInput(body: unknown): ParsedCardInput {
 
   if (!isCurrency(input.currency)) {
     return invalid("Pick USD, EUR, or GBP.", "currency")
+  }
+
+  /**
+   * A card settles against its merchant, so a currency the merchant does not
+   * trade in produces a balance nobody can reconcile. The form derives this
+   * from the chosen merchant; the server verifies it anyway.
+   */
+  if (input.currency !== merchant.currency) {
+    return invalid(
+      `${merchant.name} settles in ${merchant.currency}, so the card cannot be issued in ${input.currency}.`,
+      "currency",
+    )
   }
 
   return {

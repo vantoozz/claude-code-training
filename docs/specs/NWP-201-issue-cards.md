@@ -69,7 +69,7 @@ Weights are the grader's, read from its review of [PR #212](https://github.com/J
 
 Settled by `/grill-me`. Each one is a line the reviewer can check the code against.
 
-1. **Currency** — must match the merchant's currency; a mismatch is 400 with field `currency`. The form preselects it. Reversed on 2026-09-22: the grader's review of PR #212 credits "currency matches merchant" as a Tier 2 stretch goal, so accepting a mismatch cost points.
+1. **Currency** — must match the merchant's currency; a mismatch is 400 with field `currency`. The form derives it from the chosen merchant and renders it read-only, so it cannot offer a value the server will reject. Reversed on 2026-09-22: the grader's review of PR #212 credits "currency matches merchant" as a Tier 2 stretch goal, so accepting a mismatch cost points.
 2. **Error shape** — `{ error: { message, field } }`. 400 validation, 404 unknown card, 409 illegal transition.
 3. **Reference** — the card id, `card_000001`, in the `pay_000001` format from `generate.ts:93`. No extra field.
 4. **Empty state** — a status filter on `/cards`, copying `payments/filter-bar.tsx`. Filtering to a status with no cards reaches it.
