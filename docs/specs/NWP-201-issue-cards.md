@@ -160,6 +160,28 @@ Ordered by the bucket it proves.
 - **`GET /api/cards`.** Pages read the store directly. An unused route is debris under ORG #10.
 - Authentication, roles, permissions, and real card network calls.
 
+## Defects found while building this
+
+Neither is card code. Both were found reading the modules this ticket sits beside,
+and both violate `docs/ORG-STANDARDS.md`. Fixed, with tests that fail against the
+old implementations.
+
+- **`src/data/queries.ts` — `sortPayments` compared amounts as digit strings.**
+  `String(a.amount).localeCompare(String(b.amount))` put `1000` before `900`, so
+  sorting by amount was wrong at every change of digit count. Violates ORG #3.
+- **`src/data/metrics.ts` — `dailyVolume` bucketed in the server's timezone.**
+  `toLocaleDateString("en-CA")` put a payment at 02:30 UTC on the previous calendar
+  day west of Greenwich. `utcDayKey` already existed in `src/lib/dates.ts` and now
+  does the work. Violates ORG #4.
+- Also in `dailyVolume`, subtotals accumulated as floats in major units and were
+  reported as a rounded intermediate. ORG #1 forbids that shape even where the
+  figure comes out right, which here it does — no drift in 4,000 seeded samples.
+  Recorded as a standards fix, not as a wrong number.
+
+**Noted, not fixed:** `src/app/payments/page.tsx` never reads `sort` or `direction`
+from its search params, so the sort the API supports cannot be reached from the page.
+Out of scope for NWP-201.
+
 ## Open questions
 
 - **Does spend need to move?** Seeded cards carry a fixed `spend`. Nothing increments it, because no payment links to a card. If the reviewer expects it to change, that needs a link the ticket does not ask for.
