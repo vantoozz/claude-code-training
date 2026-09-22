@@ -21,7 +21,8 @@ import {
   SelectValue,
 } from "@/components/Select"
 import { formatMoney, parseAmountToMinorUnits } from "@/lib/money"
-import { Currency } from "@/data/types"
+import { CardCategory, Currency } from "@/data/types"
+import { CARD_CATEGORIES } from "@/lib/cards"
 import { useRouter } from "next/navigation"
 import * as React from "react"
 
@@ -98,6 +99,17 @@ function IssueForm({
   const [nickname, setNickname] = React.useState("")
   const [amount, setAmount] = React.useState("")
   const [currency, setCurrency] = React.useState<Currency | null>(null)
+  const [category, setCategory] = React.useState<CardCategory>("other")
+  /**
+   * One key per form mount. A double-click or a retry after a timeout replays
+   * it and the server answers with the card it already made.
+   */
+  const idempotencyKey = React.useMemo(
+    () =>
+      globalThis.crypto?.randomUUID?.() ??
+      `issue-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    [],
+  )
   const [error, setError] = React.useState<{
     message: string
     field: string
@@ -130,8 +142,17 @@ function IssueForm({
     try {
       const response = await fetch("/api/cards", {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ merchantId, nickname, limit, currency }),
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": idempotencyKey,
+        },
+        body: JSON.stringify({
+          merchantId,
+          nickname,
+          limit,
+          currency,
+          category,
+        }),
       })
       const payload = await response.json()
 
@@ -295,6 +316,30 @@ function IssueForm({
               Set by the merchant
             </p>
           </div>
+        </div>
+
+        <div>
+          <label
+            htmlFor="card-category"
+            className="text-sm font-medium text-gray-900 dark:text-gray-50"
+          >
+            Category
+          </label>
+          <Select
+            value={category}
+            onValueChange={(next) => setCategory(next as CardCategory)}
+          >
+            <SelectTrigger id="card-category" className="mt-2 capitalize">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CARD_CATEGORIES.map((option) => (
+                <SelectItem key={option} value={option} className="capitalize">
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {error && error.field === "form" && (

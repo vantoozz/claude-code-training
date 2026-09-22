@@ -80,3 +80,67 @@ describe("POST /api/cards", () => {
     expect(payload.error.field).toBe("body")
   })
 })
+
+describe("POST /api/cards — idempotency", () => {
+  function postWithKey(key: string, nickname: string) {
+    return POST(
+      new NextRequest("http://localhost/api/cards", {
+        method: "POST",
+        headers: { "content-type": "application/json", "idempotency-key": key },
+        body: JSON.stringify({
+          merchantId: "mch_01",
+          nickname,
+          limit: 25_000,
+          currency: "USD",
+          category: "software",
+        }),
+      }),
+    )
+  }
+
+  it("mints one card for a replayed key, not two", async () => {
+    const key = "key-replay-once"
+    const before = store.cards.length
+
+    const first = await postWithKey(key, "Idempotent first")
+    const second = await postWithKey(key, "Idempotent second")
+
+    expect(first.status).toBe(201)
+    expect(second.status).toBe(200)
+    expect(store.cards.length).toBe(before + 1)
+
+    const a = await first.json()
+    const b = await second.json()
+    expect(b.card.id).toBe(a.card.id)
+    expect(b.card.nickname).toBe("Idempotent first")
+  })
+
+  it("does not reveal the number again on a replay", async () => {
+    const key = "key-no-second-reveal"
+    const first = await postWithKey(key, "Reveal once only")
+    const second = await postWithKey(key, "Reveal once only")
+
+    expect((await first.json()).number).toMatch(/^4242\d{12}$/)
+    expect(await second.json()).not.toHaveProperty("number")
+  })
+
+  it("treats a different key as a different card", async () => {
+    const a = await postWithKey("key-distinct-a", "Distinct key A")
+    const b = await postWithKey("key-distinct-b", "Distinct key B")
+    expect((await a.json()).card.id).not.toBe((await b.json()).card.id)
+  })
+
+  it("still issues when no key is sent at all", async () => {
+    const response = await POST(
+      post({
+        merchantId: "mch_01",
+        nickname: "No key sent",
+        limit: 1_000,
+        currency: "USD",
+        category: "other",
+      }),
+    )
+    expect(response.status).toBe(201)
+    expect((await response.json()).number).toMatch(/^4242\d{12}$/)
+  })
+})

@@ -53,10 +53,18 @@ export default async function CardDetail({
           <span className="tabular-nums">{maskCard(card.last4)}</span>
         </Field>
         <Field label="Currency">{card.currency}</Field>
+        <Field label="Category">
+          <span className="capitalize">{card.category}</span>
+        </Field>
         <Field label="Spend limit">
           {formatMoney(card.limit, card.currency)}
         </Field>
-        <Field label="Spent">{formatMoney(card.spend, card.currency)}</Field>
+        <Field label="Spent">
+          {formatMoney(card.spend, card.currency)}
+          {card.spend > 0 && (
+            <span className="ml-2 text-xs text-gray-500">seeded figure</span>
+          )}
+        </Field>
         <Field label="Remaining">
           {formatMoney(remaining, card.currency)}
         </Field>

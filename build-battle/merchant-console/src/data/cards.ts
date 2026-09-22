@@ -1,6 +1,7 @@
 import {
   canTransition,
   generateCardNumber,
+  isCardCategory,
   isCardStatus,
   last4Of,
 } from "@/lib/cards"
@@ -8,7 +9,7 @@ import { isCurrency } from "@/lib/money"
 import { pad } from "./generate"
 import { merchantById } from "./merchants"
 import { store } from "./store"
-import { Card, CardStatus, Currency } from "./types"
+import { Card, CardCategory, CardStatus, Currency } from "./types"
 
 /**
  * Allowlist parsing and store mutations for cards. The same split queries.ts
@@ -27,6 +28,7 @@ export interface CardInput {
   /** Integer minor units. */
   limit: number
   currency: Currency
+  category: CardCategory
 }
 
 /** One error shape everywhere: a message safe to show, and the field at fault. */
@@ -103,9 +105,24 @@ export function parseCardInput(body: unknown): ParsedCardInput {
     )
   }
 
+  /**
+   * A missing category is not a rejection. It defaults to other, so a client
+   * that never sends one can still issue a card; anything sent that is not on
+   * the allowlist is still refused.
+   */
+  if (input.category !== undefined && !isCardCategory(input.category)) {
+    return invalid(
+      `Category must be one of advertising, software, contractors, travel, other.`,
+      "category",
+    )
+  }
+  const category: CardCategory = isCardCategory(input.category)
+    ? input.category
+    : "other"
+
   return {
     ok: true,
-    value: { merchantId, nickname, limit, currency: input.currency },
+    value: { merchantId, nickname, limit, currency: input.currency, category },
   }
 }
 
@@ -134,6 +151,7 @@ export function createCard(input: CardInput): { card: Card; number: string } {
     spend: 0,
     currency: input.currency,
     status: "active",
+    category: input.category,
     last4: last4Of(number),
     createdAt,
     events: [{ status: "active", at: createdAt }],
@@ -144,6 +162,23 @@ export function createCard(input: CardInput): { card: Card; number: string } {
 }
 
 export const cardById = (id: string) => store.cards.find((c) => c.id === id)
+
+/**
+ * The card a previous request with this key already created, if any.
+ *
+ * A double-click or a retry after a timeout replays the same key, and the
+ * caller answers with the existing card rather than minting a second one. The
+ * number is deliberately not returned on a replay: it was revealed once, on
+ * the first response, and that is the only time it exists.
+ */
+export function cardForIssueKey(key: string): Card | undefined {
+  const id = store.issueKeys.get(key)
+  return id ? cardById(id) : undefined
+}
+
+export function rememberIssueKey(key: string, cardId: string): void {
+  store.issueKeys.set(key, cardId)
+}
 
 export type CardStatusFilter = CardStatus | "all"
 

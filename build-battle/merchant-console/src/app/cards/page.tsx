@@ -48,6 +48,7 @@ export default async function CardsPage({
               <TableHeaderCell>Nickname</TableHeaderCell>
               <TableHeaderCell>Merchant</TableHeaderCell>
               <TableHeaderCell>Number</TableHeaderCell>
+              <TableHeaderCell>Category</TableHeaderCell>
               <TableHeaderCell>Created</TableHeaderCell>
               <TableHeaderCell className="text-right">Spend limit</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
@@ -59,7 +60,7 @@ export default async function CardsPage({
           <TableBody>
             {cards.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-16 text-center">
+                <TableCell colSpan={8} className="py-16 text-center">
                   <p className="font-medium text-gray-900 dark:text-gray-50">
                     No {filter === "all" ? "" : filter} cards yet
                   </p>
@@ -86,6 +87,9 @@ export default async function CardsPage({
                   <TableCell>{merchant?.name}</TableCell>
                   <TableCell className="tabular-nums text-gray-500">
                     {maskCard(card.last4)}
+                  </TableCell>
+                  <TableCell className="capitalize text-gray-500">
+                    {card.category}
                   </TableCell>
                   <TableCell>{formatDate(card.createdAt)}</TableCell>
                   <TableCell className="text-right font-medium tabular-nums text-gray-900 dark:text-gray-50">

@@ -20,6 +20,8 @@ interface Store {
   disputes: Dispute[]
   payouts: Payout[]
   cards: Card[]
+  /** Idempotency-Key to card id, so a replayed issue does not mint a second card. */
+  issueKeys: Map<string, string>
 }
 
 declare global {
@@ -29,7 +31,7 @@ declare global {
 
 function createStore(): Store {
   const { payments, refunds, disputes, payouts, cards } = generate()
-  return { merchants, payments, refunds, disputes, payouts, cards }
+  return { merchants, payments, refunds, disputes, payouts, cards, issueKeys: new Map() }
 }
 
 export const store: Store = globalThis.__northwindStore ?? createStore()

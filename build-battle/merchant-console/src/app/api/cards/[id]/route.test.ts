@@ -19,6 +19,7 @@ function issue(nickname: string) {
     nickname,
     limit: 25_000,
     currency: "USD",
+    category: "other",
   }).card
 }
 

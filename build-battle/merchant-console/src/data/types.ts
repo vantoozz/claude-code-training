@@ -13,6 +13,14 @@ export type PayoutStatus = "paid" | "in_transit" | "pending"
 
 export type CardStatus = "active" | "frozen" | "cancelled"
 
+/** What a card may be spent on. Chosen at issue, fixed thereafter. */
+export type CardCategory =
+  | "advertising"
+  | "software"
+  | "contractors"
+  | "travel"
+  | "other"
+
 export interface Merchant {
   id: string
   name: string
@@ -89,6 +97,7 @@ export interface Card {
   spend: number
   currency: Currency
   status: CardStatus
+  category: CardCategory
   /** Last four of the generated number. The full number is never stored. */
   last4: string
   /** ISO 8601, always UTC. */

@@ -2,6 +2,7 @@ import { generateCardNumber, last4Of } from "@/lib/cards"
 import { merchants } from "./merchants"
 import {
   Card,
+  CardCategory,
   CardStatus,
   Currency,
   Dispute,
@@ -167,12 +168,14 @@ function generateCards(): Card[] {
     spend: number
     currency: Currency
     status: CardStatus
+    category: CardCategory
     /** Days before GENERATED_AT that the card was issued. */
     ageDays: number
   }[] = [
     {
       merchantId: "mch_01",
       nickname: "Ad spend — Meta",
+      category: "advertising",
       limit: 250_000,
       spend: 232_500,
       currency: "USD",
@@ -182,6 +185,7 @@ function generateCards(): Card[] {
     {
       merchantId: "mch_04",
       nickname: "Contractor tools",
+      category: "contractors",
       limit: 120_000,
       spend: 71_400,
       currency: "GBP",
@@ -191,6 +195,7 @@ function generateCards(): Card[] {
     {
       merchantId: "mch_05",
       nickname: "Vendor subscriptions",
+      category: "software",
       limit: 80_000,
       spend: 79_950,
       currency: "EUR",
@@ -200,6 +205,7 @@ function generateCards(): Card[] {
     {
       merchantId: "mch_07",
       nickname: "Studio equipment",
+      category: "other",
       limit: 500_000,
       spend: 0,
       currency: "USD",
@@ -209,6 +215,7 @@ function generateCards(): Card[] {
     {
       merchantId: "mch_09",
       nickname: "Trade show travel",
+      category: "travel",
       limit: 300_000,
       spend: 145_000,
       currency: "GBP",
@@ -238,6 +245,7 @@ function generateCards(): Card[] {
       spend: spec.spend,
       currency: spec.currency,
       status: spec.status,
+      category: spec.category,
       last4: last4Of(generateCardNumber(rand)),
       createdAt: createdAt.toISOString(),
       events,

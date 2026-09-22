@@ -1,4 +1,4 @@
-import { CardStatus } from "@/data/types"
+import { CardCategory, CardStatus } from "@/data/types"
 
 /**
  * Card logic with no I/O, so it is testable under the node-only vitest config.
@@ -18,6 +18,22 @@ export const CARD_STATUSES: readonly CardStatus[] = [
   "frozen",
   "cancelled",
 ]
+
+export const CARD_CATEGORIES: readonly CardCategory[] = [
+  "advertising",
+  "software",
+  "contractors",
+  "travel",
+  "other",
+]
+
+/** Allowlist guard. A missing category is not an error; it defaults to other. */
+export function isCardCategory(value: unknown): value is CardCategory {
+  return (
+    typeof value === "string" &&
+    CARD_CATEGORIES.includes(value as CardCategory)
+  )
+}
 
 /**
  * active ⇄ frozen, either to cancelled, and cancelled is terminal.

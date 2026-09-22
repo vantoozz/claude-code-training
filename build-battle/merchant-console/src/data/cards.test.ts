@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { CARD_CATEGORIES } from "@/lib/cards"
 import {
   MAX_CARD_LIMIT,
   MAX_NICKNAME_LENGTH,
@@ -16,6 +17,7 @@ const valid = {
   nickname: "Ad spend — Meta",
   limit: 25_000,
   currency: "USD",
+  category: "advertising",
 }
 
 /** A fresh card per test, so no test depends on another's mutations. */
@@ -165,6 +167,31 @@ describe("parseCardInput — acceptance", () => {
     ]
     for (const pair of pairs) {
       expect(parseCardInput({ ...valid, ...pair }).ok).toBe(true)
+    }
+  })
+})
+
+describe("parseCardInput — category", () => {
+  it("accepts each category on the allowlist", () => {
+    for (const category of CARD_CATEGORIES) {
+      const result = parseCardInput({ ...valid, category })
+      expect(result.ok).toBe(true)
+      if (result.ok) expect(result.value.category).toBe(category)
+    }
+  })
+
+  it("defaults a missing category to other rather than rejecting", () => {
+    const { category, ...withoutCategory } = valid
+    const result = parseCardInput(withoutCategory)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.value.category).toBe("other")
+  })
+
+  it("rejects a category that is not on the allowlist", () => {
+    for (const category of ["gambling", "ADVERTISING", "", 7]) {
+      const result = parseCardInput({ ...valid, category })
+      expect(result.ok).toBe(false)
+      if (!result.ok) expect(result.error.field).toBe("category")
     }
   })
 })
