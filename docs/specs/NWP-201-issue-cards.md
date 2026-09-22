@@ -17,12 +17,14 @@ The plan is ordered by weight. Every step names the bucket it earns, so the cloc
 
 | Weight | Category | What earns it here | Steps |
 | --- | --- | --- | --- |
-| 40% | Core criteria | Issue, list, detail, generated numbers, reveal once, server validation | 1–7 |
+| 35% | Core criteria | Issue, list, detail, generated numbers, reveal once, server validation | 1–7 |
 | 20% | Correctness rules | Integer minor units, Luhn on `4242`, no PAN after creation, `canTransition` on the server, allowlists | 1, 3, 4; read at 5 |
 | 15% | Code quality | Existing helpers only, one pattern per job, no debris | every step; read at 5 |
 | 10% | Context and planning | This document, committed on the branch, and code that matches it | 0 |
-| 10% | PR description | What was built, which criteria met, how each was verified | 9 |
-| 5% | Stretch goals | Tests come free at step 1. Then freeze/unfreeze, filter, spend bar | 8 |
+| 5% | PR description | What was built, which criteria met, how each was verified | 9 |
+| 15% | Stretch goals | Tier 1: tests, freeze/unfreeze, spend bar, category lock, empty and error states. Tier 2: idempotent issue, currency matches merchant, cancel with confirm, audit trail, spend honesty | 8 |
+
+Weights are the grader's, read from its review of [PR #212](https://github.com/JJFromTenex/claude-code-training/pull/212) on 2026-09-22. The brief's 40/10/5 split for core, PR, and stretch was wrong; stretch is three times what it said.
 
 ## Current state
 
@@ -67,15 +69,19 @@ The plan is ordered by weight. Every step names the bucket it earns, so the cloc
 
 Settled by `/grill-me`. Each one is a line the reviewer can check the code against.
 
-1. **Currency** — accept any of USD/EUR/GBP regardless of merchant. The form preselects the merchant's own. The server checks the allowlist only, so a valid cross-currency POST cannot fail.
+1. **Currency** — must match the merchant's currency; a mismatch is 400 with field `currency`. The form preselects it. Reversed on 2026-09-22: the grader's review of PR #212 credits "currency matches merchant" as a Tier 2 stretch goal, so accepting a mismatch cost points.
 2. **Error shape** — `{ error: { message, field } }`. 400 validation, 404 unknown card, 409 illegal transition.
 3. **Reference** — the card id, `card_000001`, in the `pay_000001` format from `generate.ts:93`. No extra field.
 4. **Empty state** — a status filter on `/cards`, copying `payments/filter-bar.tsx`. Filtering to a status with no cards reaches it.
 5. **Transition** — `PATCH { status }`. Checked against `CARD_STATUSES`, then `canTransition`.
 6. **History** — `events: [{ status, at }]` on the card, appended by `setCardStatus`, rendered like the payment timeline. Answers "what happened to a card last Tuesday".
-7. **Build order after core** — freeze/unfreeze, timeline, filter, spend bar. The bar is the cut line. The category lock is cut.
+7. **Build order after core** — freeze/unfreeze with cancel-with-confirm, timeline as the audit trail, status filter, spend bar, category lock, idempotent issue. Stretch is 15%, not 5%, so nothing is cut; the order is value per minute.
 8. **Limit** — the drawer calls `parseAmountToMinorUnits` before POST. The API accepts integer minor units only. The server rejects anything not an integer in 1 to 5,000,000.
 9. **Nickname** — required, trimmed, 1 to 40 characters. 400 with `field: "nickname"`.
+10. **Idempotent issue** — the drawer sends an `Idempotency-Key` header, one UUID per form mount. The server maps key to card id on the store; a replay returns 200 `{ card }` with no number, because the number was revealed on the first response.
+11. **Cancel with confirm** — cancelling is terminal, so the Cancel button is a two-step inline confirm. No new dialog primitive.
+12. **Category lock** — `category` on the card from a fixed allowlist, chosen at issue time. The server defaults it to `other` when the client omits it, so a missing Select can never break issuing. Shown on the list and the detail.
+13. **Spend** — seeded spend stays. The grader marked invented spend as partial credit, but it is what makes the amber bar demonstrable and it is already pushed. The detail page says the figure is seeded.
 
 ## Approach
 
@@ -87,7 +93,7 @@ Cards are a sixth collection in the existing store. Pure logic lives in `src/lib
 
 | File | Add or change | Why |
 | --- | --- | --- |
-| `src/data/types.ts` | Change | `CardStatus`, `Card` with `spend`, `events`, `last4`, and no number field |
+| `src/data/types.ts` | Change | `CardStatus`, `CardCategory`, `Card` with `spend`, `events`, `last4`, `category`, and no number field |
 | `src/lib/cards.ts` | Add | `TEST_BIN`, `generateCardNumber(rng)`, `luhnCheckDigit`, `isLuhnValid`, `maskCard`, `canTransition`, `CARD_STATUSES` |
 | `src/lib/cards.test.ts` | Add | `4242` prefix and Luhn validity over many draws; every legal and illegal transition |
 | `src/data/cards.ts` | Add | `parseCardInput`, `createCard`, `cardById`, `listCards`, `setCardStatus`. Mirrors `queries.ts` |
@@ -115,8 +121,8 @@ Weight order. Each step ends where it can be checked.
 5. **[20%, 15%] Read the diff. Do not build.** Check: integer minor units everywhere; no formatter output stored; no number on any record or list payload; validation in `src/data/cards.ts`, not the route; nothing that duplicates `money.ts`, `dates.ts`, or `pad`; no `console.log`. — done when: every line of `src/data/` and `src/app/api/` passes that list.
 6. **[40%] List and detail.** `/cards`, `/cards/[id]`, navigation, badges. — done when: both render at `localhost:3000/cards`, masked `•••• {last4}`, with a merchant name and `formatMoney` for the limit.
 7. **[40%] Issue drawer.** Form, then success panel. — done when: submitting adds a row to the list, the number shows once, and reopening the drawer shows a blank form.
-8. **[5%] Stretch, in decided order.** Freeze/unfreeze, timeline, filter, spend bar amber past 80%. — done when: each works without a full reload and `npm test` is still green. Stop when the clock says so.
-9. **[10%] PR description.** What was built, which criteria and stretch goals were met, how each was verified. Leave anything unverified blank. — done when: every claimed row in Verification has its proof named. Ninety seconds.
+8. **[15%] Stretch, in decided order.** Freeze/unfreeze and cancel-with-confirm, timeline as the audit trail, status filter, spend bar amber past 80%, category lock, idempotent issue. — done when: each works without a full reload and `npm test` is still green.
+9. **[5%] PR description.** What was built, which criteria and stretch goals were met, how each was verified. Leave anything unverified blank. — done when: every claimed row in Verification has its proof named. Ninety seconds.
 
 ## Verification
 
@@ -140,7 +146,7 @@ Ordered by the bucket it proves.
 
 ## Risks
 
-- **The clock.** Steps 0 to 7 are 90% of the score. A stretch goal started before step 7 is green costs more than it earns.
+- **The clock.** Steps 0 to 7 are 80% of the score. A stretch goal started before step 7 is green costs more than it earns.
 - **No pre-push hook exists**, whatever the brief says. A red push scores as red. `npm test` before every push, by hand.
 - **The full number leaking.** It must never reach the `Card` record, a list payload, or client state after close. Step 5 checks this before any UI exists to hide it in.
 - **A second money helper.** `formatMoney`, `parseAmountToMinorUnits`, and `pad` all exist. Writing any of them again violates ORG #2 and #9.
@@ -151,7 +157,6 @@ Ordered by the bucket it proves.
 
 - **Persistence.** No database, no ORM, no migrations. That is NWP-203.
 - **Editing a limit after issue.** That is NWP-202.
-- **Merchant category lock.** Cut by decision 7. No category list exists in the repo, and it ranks last.
 - **`GET /api/cards`.** Pages read the store directly. An unused route is debris under ORG #10.
 - Authentication, roles, permissions, and real card network calls.
 
