@@ -9,12 +9,13 @@ import {
 } from "@/components/Table"
 import { StatusBadge } from "@/components/ui/payments/StatusBadge"
 import { listCards, parseCardStatusFilter } from "@/data/cards"
-import { merchantById } from "@/data/merchants"
+import { merchantById, merchants } from "@/data/merchants"
 import { formatDate } from "@/lib/dates"
 import { maskCard } from "@/lib/cards"
 import { formatMoney } from "@/lib/money"
 import Link from "next/link"
 import { CardsFilterBar } from "./filter-bar"
+import { IssueCardDrawer } from "./issue-card-drawer"
 
 /** Reads the store directly, as payments/page.tsx does. */
 export default async function CardsPage({
@@ -30,6 +31,13 @@ export default async function CardsPage({
     <section aria-label="Cards">
       <div className="flex flex-col justify-between gap-2 px-4 py-6 sm:flex-row sm:items-center sm:p-6">
         <CardsFilterBar current={filter} />
+        <IssueCardDrawer
+          merchants={merchants.map((m) => ({
+            id: m.id,
+            name: m.name,
+            currency: m.currency,
+          }))}
+        />
       </div>
 
       <TableRoot className="border-t border-gray-200 dark:border-gray-800">
