@@ -11,6 +11,16 @@ const SYMBOLS: Record<Currency, string> = {
   GBP: "£",
 }
 
+/**
+ * The currencies this console handles, derived from the symbol map so there is
+ * one list. The allowlist for anything arriving from a client.
+ */
+export const CURRENCIES = Object.keys(SYMBOLS) as Currency[]
+
+export function isCurrency(value: unknown): value is Currency {
+  return typeof value === "string" && (CURRENCIES as string[]).includes(value)
+}
+
 /** Render minor units for display. The only place a decimal point appears. */
 export function formatMoney(minorUnits: number, currency: Currency): string {
   const negative = minorUnits < 0
